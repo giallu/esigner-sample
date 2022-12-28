@@ -1,0 +1,73 @@
+# Set the CI version.
+version: 2.1
+
+# Windows Orbs
+orbs:
+  win: circleci/windows@5.0.0
+
+# Invoke jobs via workflows
+# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+# Workflows orchestrate a set of jobs to be run. The jobs for this pipeline are # configured below
+workflows:
+  # The name of the workflow.
+  sign-file:
+    # Inside the workflow, you define the jobs you want to run.
+    jobs:
+      - sign-file
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  # Below is the definition of your job to build and sign exe artifact with Gradle
+  sign-file:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    executor: 
+      name: win/server-2019
+      size: medium
+      variant: vs2019
+
+    # Working directory for the job on Circle-CI
+    working_directory: /home/circleci/project
+
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+    steps:
+      # 1) Check out the source code so that the workflow can access it.
+      - checkout
+
+      # 2) Download and Unzip eSignerCKA Setup
+      - run:
+          name: Download and Unzip eSignerCKA Setup
+          command: | 
+            Invoke-WebRequest -OutFile eSigner_CKA_1.0.3.zip "https://www.ssl.com/download/ssl-com-esigner-cka-1-0-3"
+            Expand-Archive -Force eSigner_CKA_1.0.3.zip
+            Remove-Item eSigner_CKA_1.0.3.zip
+            Move-Item -Destination "eSigner_CKA_1.0.3.exe" -Path "eSigner_CKA_1.0.3\SSL.COM eSigner CKA_1.0.3.exe"
+
+      # 3) Install eSignerCKA
+      - run:
+          name: Setup eSignerCKA in Silent Mode
+          command: |
+            mkdir -p "/home/circleci/project/eSignerCKA"
+            ./eSigner_CKA_1.0.3.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="/home/circleci/project/eSignerCKA" | Out-Null
+
+      # 4) Set SSLcom account information
+      - run:
+          name: Config Account Information on eSignerCKA
+          command: |
+            /home/circleci/project/eSignerCKA/eSignerCKATool.exe config -mode $env:MODE -user "$env:USERNAME" -pass "$env:PASSWORD" -totp "$env:TOTP_SECRET" -key "/home/circleci/project/eSignerCKA/master.key" -r
+
+      # 5) Unload and Load certificate to windows certificate store
+      - run:
+          name: Load Certificate into Windows Store
+          command: |
+            /home/circleci/project/eSignerCKA/eSignerCKATool.exe unload
+            /home/circleci/project/eSignerCKA/eSignerCKATool.exe load
+
+      # 6) Select code signing certificate and get thumprint for signing and Sign artifact with signtool
+      - run:
+          name: Select Certificate From Windows Store and Sign Sample File with SignTool
+          command: |
+            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+            & 'C:\Program Files (x86)\Windows Kits\10\App Certification Kit\signtool.exe' sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 "$($CodeSigningCert.Thumbprint)" "HelloWorld.dll"

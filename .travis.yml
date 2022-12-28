@@ -1,0 +1,52 @@
+# The CPU Architecture to run the job on
+arch: amd64
+
+# Default language to run tests in
+language: csharp
+
+# The Ubuntu distribution to use
+dist: bionic
+
+# The Operating System to run the job on
+os: windows
+
+# Specifies the order of build stages. All jobs in one stage must complete before next stage is executed.
+stages:
+  - sign
+
+jobs:
+  include:
+    - stage: sign
+      # The job name
+      name: sign-file
+      # The operating system to run the job on
+      os: windows
+      # Use default generic lang
+      language: c
+      # Before script to run before building the project
+      before_script: 
+        # Create Install Dir
+        - powershell.exe -ExecutionPolicy Bypass -Command 'New-Item -ItemType Directory -Force -Path C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom'
+      # Script to build the project
+      script: 
+        # Download and Unzip eSignerCKA Setup
+        - powershell.exe -ExecutionPolicy Bypass -Command 'Invoke-WebRequest -OutFile eSigner_CKA_1.0.3.zip "https://www.ssl.com/download/ssl-com-esigner-cka-1-0-3"'
+        - powershell.exe -ExecutionPolicy Bypass -Command 'Expand-Archive -Force eSigner_CKA_1.0.3.zip'
+        - powershell.exe -ExecutionPolicy Bypass -Command 'Remove-Item eSigner_CKA_1.0.3.zip'
+        - powershell.exe -ExecutionPolicy Bypass -Command 'Move-Item -Destination "eSigner_CKA_1.0.3.exe" -Path "eSigner_CKA_1.0.3\SSL.COM eSigner CKA_1.0.3.exe"'
+        # Setup eSignerCKA in Silent Mode
+        - powershell.exe -ExecutionPolicy Bypass -Command './eSigner_CKA_1.0.3.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom" | Out-Null'
+        # Check installation directory
+        - powershell.exe -ExecutionPolicy Bypass -Command 'dir C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom'
+        # Config Account Information on eSignerCKA
+        - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\eSignerCKATool.exe config -mode ${MODE} -user "${USERNAME}" -pass "${PASSWORD}" -totp "${TOTP_SECRET}" -key "C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\master.key" -r'
+        # Unload Certificate into Windows Store
+        - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\eSignerCKATool.exe unload'
+        # Load Certificate into Windows Store
+        - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\eSignerCKATool.exe load'
+        # Select Certificate From Windows Store
+        - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint'
+        # Debug Certificate Thumbprint
+        - powershell.exe -ExecutionPolicy Bypass -Command 'Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint'
+        # Sign Sample File with SignTool
+        - powershell.exe -ExecutionPolicy Bypass -Command "Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); 'C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll'"
