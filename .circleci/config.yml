@@ -43,7 +43,7 @@ jobs:
             Invoke-WebRequest -OutFile eSigner_CKA_1.0.4.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
             Expand-Archive -Force eSigner_CKA_1.0.4.zip
             Remove-Item eSigner_CKA_1.0.4.zip
-            Move-Item -Destination "eSigner_CKA_1.0.4.exe" -Path "eSigner_CKA_1.0.4\SSL.COM eSigner CKA_1.0.4.exe"
+            Move-Item -Destination "eSigner_CKA_1.0.4.exe" -Path "eSigner_CKA_1.0.4\*.exe"
 
       # 3) Install eSignerCKA
       - run:
