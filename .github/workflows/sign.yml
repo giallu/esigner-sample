@@ -26,16 +26,16 @@ jobs:
       # 2) Download and Unzip eSignerCKA Setup
       - name: Download and Unzip eSignerCKA Setup
         run: | 
-          Invoke-WebRequest -OutFile eSigner_CKA_1.0.3.zip "https://www.ssl.com/download/ssl-com-esigner-cka-1-0-3"
-          Expand-Archive -Force eSigner_CKA_1.0.3.zip
-          Remove-Item eSigner_CKA_1.0.3.zip
-          Move-Item -Destination "eSigner_CKA_1.0.3.exe" -Path "eSigner_CKA_1.0.3\SSL.COM eSigner CKA_1.0.3.exe"
+          Invoke-WebRequest -OutFile eSigner_CKA_1.0.4.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+          Expand-Archive -Force eSigner_CKA_1.0.4.zip
+          Remove-Item eSigner_CKA_1.0.4.zip
+          Move-Item -Destination "eSigner_CKA_1.0.4.exe" -Path "eSigner_CKA_1.0.4\SSL.COM eSigner CKA_1.0.4.exe"
       
       # 3) Install eSignerCKA
       - name: Setup eSignerCKA in Silent Mode
         run: |
           New-Item -ItemType Directory -Force -Path ${{ env.INSTALL_DIR }}
-          ./eSigner_CKA_1.0.3.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
+          ./eSigner_CKA_1.0.4.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
 
       # 4) Set SSLcom account information
       - name: Config Account Information on eSignerCKA
