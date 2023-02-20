@@ -22,12 +22,12 @@ sign-file:
     - New-Item -ItemType Directory -Force -Path C:\Users\gitlab_runner\Desktop\eSignerCKA
   script:
     # Download and Unzip eSignerCKA Setup
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Invoke-WebRequest -OutFile eSigner_CKA_1.0.3.zip "https://www.ssl.com/download/ssl-com-esigner-cka-1-0-3"'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Expand-Archive -Force eSigner_CKA_1.0.3.zip'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Remove-Item eSigner_CKA_1.0.3.zip'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Move-Item -Destination "eSigner_CKA_1.0.3.exe" -Path "eSigner_CKA_1.0.3\SSL.COM eSigner CKA_1.0.3.exe"'
+    - powershell.exe -ExecutionPolicy Bypass -Command 'Invoke-WebRequest -OutFile eSigner_CKA_1.0.4.zip "https://www.ssl.com/download/ssl-com-esigner-cka"'
+    - powershell.exe -ExecutionPolicy Bypass -Command 'Expand-Archive -Force eSigner_CKA_1.0.4.zip'
+    - powershell.exe -ExecutionPolicy Bypass -Command 'Remove-Item eSigner_CKA_1.0.4.zip'
+    - powershell.exe -ExecutionPolicy Bypass -Command 'Move-Item -Destination "eSigner_CKA_1.0.4.exe" -Path "eSigner_CKA_1.0.4\SSL.COM eSigner CKA_1.0.4.exe"'
     # Setup eSignerCKA in Silent Mode
-    - powershell.exe -ExecutionPolicy Bypass -Command './eSigner_CKA_1.0.3.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\gitlab_runner\Desktop\eSignerCKA"'
+    - powershell.exe -ExecutionPolicy Bypass -Command './eSigner_CKA_1.0.4.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\gitlab_runner\Desktop\eSignerCKA"'
     # Check installation directory
     - powershell.exe -ExecutionPolicy Bypass -Command 'dir C:\Users\gitlab_runner\Desktop\eSignerCKA'
     # Config Account Information on eSignerCKA
