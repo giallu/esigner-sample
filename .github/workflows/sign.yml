@@ -26,7 +26,7 @@ jobs:
       # 2) Download and Unzip eSignerCKA Setup
       - name: Download and Unzip eSignerCKA Setup
         run: | 
-          Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+          Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.4/SSL.COM-eSigner-CKA_1.0.4.zip"
           Expand-Archive -Force eSigner_CKA_Setup.zip
           Remove-Item eSigner_CKA_Setup.zip
           Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
