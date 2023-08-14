@@ -8,6 +8,7 @@ on: push
 env:
   MASTER_KEY: master.key
   SIGNABLE_FILE_PATH: HelloWorld.dll
+  SIGNABLE_VSIX_FILE_PATH: SSLcom.vsix
   INSTALL_DIR: C:\Users\runneradmin\eSignerCKA
   MASTER_KEY_FILE: C:\Users\runneradmin\eSignerCKA\master.key
 
@@ -25,7 +26,7 @@ jobs:
 
       # 2) Download and Unzip eSignerCKA Setup
       - name: Download and Unzip eSignerCKA Setup
-        run: | 
+        run: |
           Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.6/SSL.COM-eSigner-CKA_1.0.6.zip"
           Expand-Archive -Force eSigner_CKA_Setup.zip
           Remove-Item eSigner_CKA_Setup.zip
@@ -64,13 +65,73 @@ jobs:
         uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:
-          name: eSignerCKA-Logs
+          name: eSignerCKA-Logs-DLL
           path: C:\Users\runneradmin\AppData\Roaming\eSignerCKA\KSP
-          
-      # 9) Upload signtool file
-      - name: Upload SignTool File
+
+  # Defines job named "sign-vsix-file"
+  sign-vsix-file:
+    # Run job on Windows Runner
+    runs-on: windows-latest
+    # When the workflow runs, this is the name that is logged
+    name: Sign VSIX File with eSignerCKA
+    steps:
+      # 1) Check out the source code so that the workflow can access it.
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # 2) Set up the .NET CLI environment for the workflow to use.
+      - name: Setup Dotnet Core
+        run: |
+          choco install dotnet-runtime -y
+
+      # 3) Download and Unzip eSignerCKA Setup
+      - name: Download and Unzip eSignerCKA Setup
+        run: |
+          Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.6/SSL.COM-eSigner-CKA_1.0.6.zip"
+          Expand-Archive -Force eSigner_CKA_Setup.zip
+          Remove-Item eSigner_CKA_Setup.zip
+          Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
+
+      # 4) Install eSignerCKA
+      - name: Setup eSignerCKA in Silent Mode
+        run: |
+          New-Item -ItemType Directory -Force -Path ${{ env.INSTALL_DIR }}
+          ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
+
+      # 5) Set SSLcom account information
+      - name: Config Account Information on eSignerCKA
+        run: |
+          ${{ env.INSTALL_DIR }}/eSignerCKATool.exe config -mode "${{ secrets.MODE }}" -user "${{ secrets.USERNAME }}" -pass "${{ secrets.PASSWORD }}" -totp "${{ secrets.TOTP_SECRET }}" -key "${{ env.MASTER_KEY_FILE }}" -r
+
+      # 6) Unload and Load certificate to windows certificate store
+      - name: Load Certificate into Windows Store
+        run: |
+          ${{ env.INSTALL_DIR }}/eSignerCKATool.exe unload
+          ${{ env.INSTALL_DIR }}/eSignerCKATool.exe load
+
+      # 7) Select code signing certificate and get thumprint for signing
+      - name: Select Certificate From Windows Store
+        run: |
+          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+          echo "THUMBPRINT=$($CodeSigningCert.Thumbprint)" >> $env:GITHUB_ENV
+
+      # 8) Install OpenVsixSignTool to Custom Location (https://github.com/vcsjones/OpenOpcSignTool)
+      - name: Install OpenOpcSignTool
+        run: |
+          New-Item -ItemType Directory -Force -Path C:\Users\runneradmin\Desktop\dotnet-tools
+          Invoke-WebRequest -OutFile OpenVsixSignTool.zip https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.4/OpenVsixSignTool_1.0.0-x86.zip
+          Move-Item -Path OpenVsixSignTool.zip -Destination C:\Users\runneradmin\Desktop\dotnet-tools\OpenVsixSignTool.zip
+          Expand-Archive -LiteralPath C:\Users\runneradmin\Desktop\dotnet-tools\OpenVsixSignTool.zip -DestinationPath C:\Users\runneradmin\Desktop\dotnet-tools -Force
+
+      # 9) Sign artifact with OpenOpcSignTool
+      - name: Sign Sample File with OpenVsixSignTool
+        run: |
+          C:\Users\runneradmin\Desktop\dotnet-tools\OpenVsixSignTool --roll-forward LatestMajor sign --sha1 ${{ env.THUMBPRINT }} --timestamp http://ts.ssl.com -ta sha256 -fd sha256 "${{ env.SIGNABLE_VSIX_FILE_PATH }}"
+
+      # 10) Upload eSignerCKA Logs
+      - name: Upload eSignerCKA Logs
         uses: actions/upload-artifact@v3
         if: ${{ always() }}
         with:
-          name: SignTool
-          path: "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe"
+          name: eSignerCKA-Logs-VSIX
+          path: C:\Users\runneradmin\AppData\Roaming\eSignerCKA\KSP

@@ -14,7 +14,7 @@ stages:
 sign-file:
   # Define what stage the job will run in.
   stage: sign
-  # Runner for MSI Build on Windows
+  # Runner for Sign File on Windows
   extends:
     - .windows_runners
   before_script:
@@ -22,27 +22,75 @@ sign-file:
     - New-Item -ItemType Directory -Force -Path C:\Users\gitlab_runner\Desktop\eSignerCKA
   script:
     # Download and Unzip eSignerCKA Setup
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Expand-Archive -Force eSigner_CKA_Setup.zip'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Remove-Item eSigner_CKA_Setup.zip'
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"'
+    - Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+    - Expand-Archive -Force eSigner_CKA_Setup.zip
+    - Remove-Item eSigner_CKA_Setup.zip
+    - Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
     # Setup eSignerCKA in Silent Mode
-    - powershell.exe -ExecutionPolicy Bypass -Command './eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\gitlab_runner\Desktop\eSignerCKA"'
+    - ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\gitlab_runner\Desktop\eSignerCKA" | Out-Null
     # Check installation directory
-    - powershell.exe -ExecutionPolicy Bypass -Command 'dir C:\Users\gitlab_runner\Desktop\eSignerCKA'
+    - dir C:\Users\gitlab_runner\Desktop\eSignerCKA
+    # Check installation directory
+    - Get-ChildItem -Path C:\Users\gitlab_runner\Desktop\eSignerCKA
     # Config Account Information on eSignerCKA
-    - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe config -mode ${MODE} -user "${USERNAME}" -pass "${PASSWORD}" -totp "${TOTP_SECRET}" -key "C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\master.key" -r'
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe config -mode ${MODE} -user "${USERNAME}" -pass "${PASSWORD}" -totp "${TOTP_SECRET}" -key "C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\master.key" -r
     # Unload Certificate into Windows Store
-    - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe unload'
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe unload
     # Load Certificate into Windows Store
-    - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe load'
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe load
     # Check data directory
-    - powershell.exe -ExecutionPolicy Bypass -Command 'dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA'
+    - dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA
     # Check config data directory
-    - powershell.exe -ExecutionPolicy Bypass -Command 'dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\Config'
+    - dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\Config
     # Select Certificate From Windows Store
-    - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint'
+    - $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
     # Debug Certificate Thumbprint
-    - powershell.exe -ExecutionPolicy Bypass -Command 'Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint'
+    - Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
     # Sign Sample File with SignTool
     - powershell.exe -ExecutionPolicy Bypass -Command "Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); 'C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll'"
+
+# Below is the definition of your job to sign file
+sign-vsix:
+  # Define what stage the job will run in.
+  stage: sign
+  # Runner for Sign File on Windows
+  extends:
+    - .windows_runners
+  before_script:
+    # Create Install Dir
+    - New-Item -ItemType Directory -Force -Path C:\Users\gitlab_runner\Desktop\eSignerCKA
+  script:
+    # Download and Unzip eSignerCKA Setup
+    - Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+    - Expand-Archive -Force eSigner_CKA_Setup.zip
+    - Remove-Item eSigner_CKA_Setup.zip
+    - Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
+    # Setup eSignerCKA in Silent Mode
+    - ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="C:\Users\gitlab_runner\Desktop\eSignerCKA" | Out-Null
+    # Check installation directory
+    - dir C:\Users\gitlab_runner\Desktop\eSignerCKA
+    # Check installation directory
+    - Get-ChildItem -Path C:\Users\gitlab_runner\Desktop\eSignerCKA
+    # Config Account Information on eSignerCKA
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe config -mode ${MODE} -user "${USERNAME}" -pass "${PASSWORD}" -totp "${TOTP_SECRET}" -key "C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\master.key" -r
+    # Unload Certificate into Windows Store
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe unload
+    # Load Certificate into Windows Store
+    - C:\Users\gitlab_runner\Desktop\eSignerCKA\eSignerCKATool.exe load
+    # Check data directory
+    - dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA
+    # Check config data directory
+    - dir C:\Users\gitlab_runner\AppData\Roaming\eSignerCKA\Config
+    # Select Certificate From Windows Store
+    - $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+    # Debug Certificate Thumbprint
+    - Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
+    # Install Dotnet Runtime 7.0
+    - choco install dotnet-runtime -y
+    # Install OpenVsixSignTool to Custom Location
+    - New-Item -ItemType Directory -Force -Path C:\Users\gitlab_runner\Desktop\dotnet-tools
+    - Invoke-WebRequest -OutFile OpenVsixSignTool.zip https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.4/OpenVsixSignTool_1.0.0-x86.zip
+    - Move-Item -Path OpenVsixSignTool.zip -Destination C:\Users\gitlab_runner\Desktop\dotnet-tools\OpenVsixSignTool.zip
+    - Expand-Archive -LiteralPath C:\Users\gitlab_runner\Desktop\dotnet-tools\OpenVsixSignTool.zip -DestinationPath C:\Users\gitlab_runner\Desktop\dotnet-tools -Force
+    # Sign Sample File with OpenVsixSignTool
+    - powershell.exe -ExecutionPolicy Bypass -Command 'Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); C:\Users\gitlab_runner\Desktop\dotnet-tools\OpenVsixSignTool --roll-forward LatestMajor sign --sha1 $Thumbprint --timestamp http://ts.ssl.com -ta sha256 -fd sha256 "SSLcom.vsix"'
