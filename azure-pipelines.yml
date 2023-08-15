@@ -1,0 +1,54 @@
+# Continuous integration triggers
+trigger:
+  - none
+
+# Groups jobs into stages. All jobs in one stage must complete before next stage is executed.
+stages:
+  - stage: build
+    # When the workflow runs, this is the name that is logged
+    displayName: Build
+    jobs:
+      - job:
+        pool:
+          # Run job on Windows VMs
+          vmImage: 'windows-latest'
+        steps:
+          # Download and Unzip eSignerCKA Setup
+        - powershell: |
+            Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+            Expand-Archive -Force eSigner_CKA_Setup.zip
+            Remove-Item eSigner_CKA_Setup.zip
+            Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
+          displayName: 'Download and Unzip eSignerCKA Setup'
+
+          # Setup eSignerCKA in Silent Mode and Check installation directory
+        - powershell: |
+            ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA" | Out-Null
+            dir $(Build.BinariesDirectory)\Desktop\eSignerCKA
+            Get-ChildItem -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
+          displayName: 'Setup eSignerCKA in Silent Mode'
+
+          # Config Account Information on eSignerCKA
+        - powershell: |
+            $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe config -mode $(MODE) -user "$(USERNAME)" -pass "$(PASSWORD)" -totp "$(TOTP_SECRET)" -key "$(Build.BinariesDirectory)\Desktop\eSignerCKA\master.key" -r
+          displayName: 'Config Account Information on eSignerCKA'
+
+          # Unload and Load Certificate into Windows Store
+        - powershell: |
+            $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe unload
+            $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe load
+          displayName: 'Unload and Load Certificate into Windows Store'
+
+          # Select Certificate From Windows Store and Sign Sample File with SignTool
+        - powershell: |
+            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+            Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
+            & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
+          displayName: 'Sign Sample File with SignTool'
+
+          # Save artifact in order to use signing job
+        - task: PublishBuildArtifacts@1
+          displayName: 'Save to be signed artifact for downloading'
+          inputs:
+            pathtoPublish: HelloWorld.dll
+            artifactName: HelloWorld.dll
