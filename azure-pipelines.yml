@@ -12,6 +12,7 @@ stages:
         pool:
           # Run job on Windows VMs
           vmImage: 'windows-latest'
+        condition: true
         steps:
           # Download and Unzip eSignerCKA Setup
         - powershell: |
@@ -20,6 +21,12 @@ stages:
             Remove-Item eSigner_CKA_Setup.zip
             Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
           displayName: 'Download and Unzip eSignerCKA Setup'
+
+          # Download and Install WindowsSDK
+        - powershell: |
+            Invoke-WebRequest -OutFile winsdksetup.exe "https://download.microsoft.com/download/3/b/d/3bd97f81-3f5b-4922-b86d-dc5145cd6bfe/windowssdk/winsdksetup.exe"
+            Start-Process ".\winsdksetup.exe" -argumentlist "features + /q" -wait
+          displayName: 'Download and Install WindowsSDK'
 
           # Setup eSignerCKA in Silent Mode and Check installation directory
         - powershell: |
@@ -43,7 +50,7 @@ stages:
         - powershell: |
             $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
             Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
-            & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.17763.0\x86\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
+            & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x86\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
           displayName: 'Sign Sample File with SignTool'
 
           # Save artifact in order to use signing job
@@ -53,16 +60,25 @@ stages:
             pathtoPublish: HelloWorld.dll
             artifactName: HelloWorld.dll
 
+          # Upload eSignerCKA Logs
+        - task: PublishBuildArtifacts@1
+          displayName: Upload eSignerCKA Logs
+          condition: true
+          inputs:
+            artifactName: eSignerCKA-Logs-DLL
+            pathtoPublish: $(APPDATA)\eSignerCKA\KSP
+
   - stage: sign_vsix
     # When the workflow runs, this is the name that is logged
-    displayName: Sign VSIX
+    displayName: Sign VSIX File
     jobs:
       - job:
         pool:
           # Run job on Windows VMs
           vmImage: 'windows-latest'
+        condition: true
         steps:
-          # Download and Unzip eSignerCKA Setup
+            # Download and Unzip eSignerCKA Setup
           - powershell: |
               Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
               Expand-Archive -Force eSigner_CKA_Setup.zip
@@ -88,7 +104,7 @@ stages:
               $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe load
             displayName: 'Unload and Load Certificate into Windows Store'
 
-          # Install OpenVsixSignTool to Custom Location (https://github.com/vcsjones/OpenOpcSignTool)
+            # Install OpenVsixSignTool to Custom Location (https://github.com/vcsjones/OpenOpcSignTool)
           - powershell: |
               New-Item -ItemType Directory -Force -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA\dotnet-tools
               Invoke-WebRequest -OutFile OpenVsixSignTool.zip https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.4/OpenVsixSignTool_1.0.0-x86.zip
@@ -101,7 +117,7 @@ stages:
               $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
               Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
               $(Build.BinariesDirectory)\Desktop\eSignerCKA\dotnet-tools\OpenVsixSignTool --roll-forward LatestMajor sign --sha1 $Thumbprint --timestamp http://ts.ssl.com -ta sha256 -fd sha256 SSLcom.vsix
-            displayName: 'Sign Sample File with OpenOpcSignTool'
+            displayName: 'Sign Sample VSIX File with OpenOpcSignTool'
 
             # Save artifact in order to use signing job
           - task: PublishBuildArtifacts@1
@@ -109,3 +125,86 @@ stages:
             inputs:
               pathtoPublish: SSLcom.vsix
               artifactName: SSLcom.vsix
+
+            # Upload eSignerCKA Logs
+          - task: PublishBuildArtifacts@1
+            displayName: Upload eSignerCKA Logs
+            condition: true
+            inputs:
+              artifactName: eSignerCKA-Logs-VSIX
+              pathtoPublish: $(APPDATA)\eSignerCKA\KSP
+
+  - stage: sign_app
+    # When the workflow runs, this is the name that is logged
+    displayName: Sign APP File
+    jobs:
+      - job:
+        pool:
+          # Run job on Windows VMs
+          vmImage: 'windows-latest'
+        condition: true
+        steps:
+            # Download and Unzip eSignerCKA Setup
+          - powershell: |
+              Invoke-WebRequest -OutFile eSigner_CKA_Setup.zip "https://www.ssl.com/download/ssl-com-esigner-cka"
+              Expand-Archive -Force eSigner_CKA_Setup.zip
+              Remove-Item eSigner_CKA_Setup.zip
+              Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
+            displayName: 'Download and Unzip eSignerCKA Setup'
+
+            # Download and Install WindowsSDK
+          - powershell: |
+              Invoke-WebRequest -OutFile winsdksetup.exe "https://download.microsoft.com/download/3/b/d/3bd97f81-3f5b-4922-b86d-dc5145cd6bfe/windowssdk/winsdksetup.exe"
+              Start-Process ".\winsdksetup.exe" -argumentlist "features + /q" -wait
+            displayName: 'Download and Install WindowsSDK'
+
+            # Download and Unzip Dynamics 365 Setup
+          - powershell: |
+              Invoke-WebRequest -OutFile Dynamics.365.BC.12841.US.DVD.zip "https://download.microsoft.com/download/3/e/7/3e71083e-6cd6-4598-a6bb-5c602b74aec3/Release/Dynamics.365.BC.12841.US.DVD.zip"
+              Expand-Archive -Force Dynamics.365.BC.12841.US.DVD.zip
+            displayName: 'Download and Unzip Dynamics 365 Setup'
+
+            # Install Dynamics 365
+          - powershell: |
+              Start-Process ".\Dynamics.365.BC.12841.US.DVD\setup.exe" -argumentlist "/config .\Dynamics.365.BC.12841.US.DVD\Install-NavComponentConfig.xml /quiet" -wait
+            displayName: 'Install Dynamics 365'
+
+            # Setup eSignerCKA in Silent Mode and Check installation directory
+          - powershell: |
+              ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA" | Out-Null
+              dir $(Build.BinariesDirectory)\Desktop\eSignerCKA
+              Get-ChildItem -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
+            displayName: 'Setup eSignerCKA in Silent Mode'
+
+            # Config Account Information on eSignerCKA
+          - powershell: |
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe config -mode $(MODE) -user "$(USERNAME)" -pass "$(PASSWORD)" -totp "$(TOTP_SECRET)" -key "$(Build.BinariesDirectory)\Desktop\eSignerCKA\master.key" -r
+            displayName: 'Config Account Information on eSignerCKA'
+
+            # Unload and Load Certificate into Windows Store
+          - powershell: |
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe unload
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCKATool.exe load
+            displayName: 'Unload and Load Certificate into Windows Store'
+
+            # Select Certificate From Windows Store and Sign Sample File with SignTool
+          - powershell: |
+              $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+              Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
+              & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.app
+            displayName: 'Sign Sample APP with SignTool'
+
+            # Save artifact in order to use signing job
+          - task: PublishBuildArtifacts@1
+            displayName: 'Save to be signed artifact for downloading'
+            inputs:
+              pathtoPublish: HelloWorld.app
+              artifactName: HelloWorld.app
+
+            # Upload eSignerCKA Logs
+          - task: PublishBuildArtifacts@1
+            displayName: Upload eSignerCKA Logs
+            condition: true
+            inputs:
+              artifactName: eSignerCKA-Logs-APP
+              pathtoPublish: $(APPDATA)\eSignerCKA\KSP
