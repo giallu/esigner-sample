@@ -35,7 +35,19 @@ pipeline {
             }
         }
 
-       // 3) Setup eSignerCKA and Load Certificates
+       // 3) Setup eSignerCKA Dependency
+       stage('Setup eSignerCKA Dependency') {
+          steps {
+              powershell """
+                    Start-Process ".\\setup\\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+                    Start-Process ".\\setup\\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+                    Start-Process "${WORKSPACE}\\eSignerCKA\\RegisterKSP.exe" -wait
+                    Start-Process "${WORKSPACE}\\eSignerCKA\\eSignerCSP.Config.exe" -wait
+              """
+          }
+       }
+
+       // 4) Setup eSignerCKA and Load Certificates
        stage('Setup eSignerCKA in Silent Mode') {
            steps {
                powershell """
@@ -46,11 +58,34 @@ pipeline {
            }
        }
 
-       // 4) Select Certificate and Sign Sample File with SignTool
-       stage('Sign Sample File with SignTool') {
+       // 5) Install OpenVsixSignTool to Custom Location
+       stage('Install OpenVsixSignTool to Custom Location') {
+            steps {
+               powershell '''
+                    New-Item -ItemType Directory -Force -Path ${WORKSPACE}\\dotnet-tools
+                    Invoke-WebRequest -OutFile OpenVsixSignTool.zip https://github.com/SSLcom/eSignerCKA/releases/download/v1.0.4/OpenVsixSignTool_1.0.0-x86.zip
+                    Move-Item -Path OpenVsixSignTool.zip -Destination ${WORKSPACE}\\dotnet-tools\\OpenVsixSignTool.zip -Force
+                    Expand-Archive -LiteralPath ${WORKSPACE}\\dotnet-tools\\OpenVsixSignTool.zip -DestinationPath ${WORKSPACE}\\dotnet-tools -Force
+               '''
+            }
+       }
+
+       // 6) Download and Unzip Dynamics 365 Setup and Install Dynamics 365
+      stage('Download and Unzip Dynamics 365 Setup and Install Dynamics 365') {
+           steps {
+              powershell """
+                  Invoke-WebRequest -OutFile Dynamics.365.BC.12841.US.DVD.zip "https://download.microsoft.com/download/3/e/7/3e71083e-6cd6-4598-a6bb-5c602b74aec3/Release/Dynamics.365.BC.12841.US.DVD.zip"
+                  Expand-Archive -Force Dynamics.365.BC.12841.US.DVD.zip
+                  Start-Process ".\\Dynamics.365.BC.12841.US.DVD\\setup.exe" -argumentlist "/config .\\Dynamics.365.BC.12841.US.DVD\\Install-NavComponentConfig.xml /quiet" -wait
+              """
+           }
+       }
+
+       // 5) Select Certificate and Sign DLL File with SignTool
+       stage('Sign DLL File with SignTool') {
            steps {
                powershell '''
-                    $CodeSigningCert = Get-ChildItem Cert:\\CurrentUser\\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+                    $CodeSigningCert = Get-ChildItem Cert:\\CurrentUser\\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
                     Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
                     & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22000.0/x86/signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
                '''
@@ -58,6 +93,38 @@ pipeline {
            post {
                always {
                    archiveArtifacts artifacts: "HelloWorld.dll", onlyIfSuccessful: true
+               }
+           }
+       }
+
+       // 6) Select Certificate and Sign VSIX File with SignTool
+       stage('Sign VSIX File with SignTool') {
+           steps {
+               powershell '''
+                    $CodeSigningCert = Get-ChildItem Cert:\\CurrentUser\\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
+                    Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
+                    & "${WORKSPACE}/dotnet-tools/OpenVsixSignTool" --roll-forward LatestMajor sign --sha1 $Thumbprint --timestamp http://ts.ssl.com -ta sha256 -fd sha256 SSLcom.vsix
+               '''
+           }
+           post {
+               always {
+                   archiveArtifacts artifacts: "SSLcom.vsix", onlyIfSuccessful: true
+               }
+           }
+       }
+
+       // 7) Select Certificate and Sign APP File with SignTool
+       stage('Sign APP File with SignTool') {
+           steps {
+               powershell '''
+                    $CodeSigningCert = Get-ChildItem Cert:\\CurrentUser\\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
+                    Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
+                    & "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22000.0/x86/signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
+               '''
+           }
+           post {
+               always {
+                   archiveArtifacts artifacts: "HelloWorld.app", onlyIfSuccessful: true
                }
            }
        }

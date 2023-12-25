@@ -38,7 +38,7 @@ $mode = "sandbox" # For Production Certificate it must be "product"
 & ${InstallDir}\eSignerCKATool.exe load
 
 # Select Certificate from Windows Store
-$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
 $Thumbprint = $( $CodeSigningCert.Thumbprint )
 Write-Output $Thumbprint
 

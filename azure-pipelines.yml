@@ -30,7 +30,12 @@ stages:
 
           # Setup eSignerCKA in Silent Mode and Check installation directory
         - powershell: |
-            ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA" | Out-Null
+            New-Item -ItemType Directory -Force -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
+            Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA"' -wait
+            Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+            Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+            $(Build.BinariesDirectory)\Desktop\eSignerCKA\RegisterKSP.exe | Out-Null
+            $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCSP.Config.exe | Out-Null
             dir $(Build.BinariesDirectory)\Desktop\eSignerCKA
             Get-ChildItem -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
           displayName: 'Setup eSignerCKA in Silent Mode'
@@ -48,7 +53,7 @@ stages:
 
           # Select Certificate From Windows Store and Sign Sample File with SignTool
         - powershell: |
-            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
             Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
             & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x86\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.dll
           displayName: 'Sign Sample File with SignTool'
@@ -88,7 +93,12 @@ stages:
 
             # Setup eSignerCKA in Silent Mode and Check installation directory
           - powershell: |
-              ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA" | Out-Null
+              New-Item -ItemType Directory -Force -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
+              Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA"' -wait
+              Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+              Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\RegisterKSP.exe | Out-Null
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCSP.Config.exe | Out-Null
               dir $(Build.BinariesDirectory)\Desktop\eSignerCKA
               Get-ChildItem -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
             displayName: 'Setup eSignerCKA in Silent Mode'
@@ -114,7 +124,7 @@ stages:
 
             # Select Certificate From Windows Store and Sign Sample File with OpenOpcSignTool
           - powershell: |
-              $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+              $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
               Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
               $(Build.BinariesDirectory)\Desktop\eSignerCKA\dotnet-tools\OpenVsixSignTool --roll-forward LatestMajor sign --sha1 $Thumbprint --timestamp http://ts.ssl.com -ta sha256 -fd sha256 SSLcom.vsix
             displayName: 'Sign Sample VSIX File with OpenOpcSignTool'
@@ -171,7 +181,12 @@ stages:
 
             # Setup eSignerCKA in Silent Mode and Check installation directory
           - powershell: |
-              ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA" | Out-Null
+              New-Item -ItemType Directory -Force -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
+              Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="$(Build.BinariesDirectory)\Desktop\eSignerCKA"' -wait
+              Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+              Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\RegisterKSP.exe | Out-Null
+              $(Build.BinariesDirectory)\Desktop\eSignerCKA\eSignerCSP.Config.exe | Out-Null
               dir $(Build.BinariesDirectory)\Desktop\eSignerCKA
               Get-ChildItem -Path $(Build.BinariesDirectory)\Desktop\eSignerCKA
             displayName: 'Setup eSignerCKA in Silent Mode'
@@ -189,7 +204,7 @@ stages:
 
             # Select Certificate From Windows Store and Sign Sample File with SignTool
           - powershell: |
-              $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint
+              $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint
               Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint
               & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.22621.0\x64\signtool.exe" sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 $Thumbprint HelloWorld.app
             displayName: 'Sign Sample APP with SignTool'

@@ -70,7 +70,7 @@ jobs:
       - run:
           name: Select Certificate From Windows Store and Sign Sample File with SignTool
           command: |
-            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
             & 'C:\Program Files (x86)\Windows Kits\10\App Certification Kit\signtool.exe' sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 "$($CodeSigningCert.Thumbprint)" "HelloWorld.dll"
 
   # Below is the definition of your job to build and sign exe artifact with Gradle
@@ -140,5 +140,5 @@ jobs:
       - run:
           name: Select Certificate From Windows Store and Sign Sample File with OpenVsixSignTool
           command: |
-            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+            $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
             /home/circleci/project/dotnet-tools/OpenVsixSignTool --roll-forward LatestMajor sign --sha1 $($CodeSigningCert.Thumbprint) --timestamp http://ts.ssl.com -ta sha256 -fd sha256 "SSLcom.vsix"

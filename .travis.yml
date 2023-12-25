@@ -45,7 +45,7 @@ jobs:
         # Load Certificate into Windows Store
         - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\eSignerCKATool.exe load'
         # Select Certificate From Windows Store
-        - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint'
+        - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint'
         # Debug Certificate Thumbprint
         - powershell.exe -ExecutionPolicy Bypass -Command 'Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint'
         # Sign Sample File with SignTool
@@ -80,7 +80,7 @@ jobs:
         # Load Certificate into Windows Store
         - powershell.exe -ExecutionPolicy Bypass -Command 'C:\Users\travis\build\mbayrak-sslcom\eSignerCKA\SSLcom\eSignerCKATool.exe load'
         # Select Certificate From Windows Store
-        - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1; echo $CodeSigningCert.Thumbprint > .Thumbprint'
+        - powershell.exe -ExecutionPolicy Bypass -Command '$CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }; echo $CodeSigningCert.Thumbprint > .Thumbprint'
         # Debug Certificate Thumbprint
         - powershell.exe -ExecutionPolicy Bypass -Command 'Set-Variable -Name Thumbprint -Value (Get-Content .Thumbprint); echo $Thumbprint'
         # Install OpenVsixSignTool to Custom Location (https://github.com/vcsjones/OpenOpcSignTool)

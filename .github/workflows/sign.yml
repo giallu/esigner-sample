@@ -32,12 +32,16 @@ jobs:
           Expand-Archive -Force eSigner_CKA_Setup.zip
           Remove-Item eSigner_CKA_Setup.zip
           Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
-      
+
       # 3) Install eSignerCKA
       - name: Setup eSignerCKA in Silent Mode
         run: |
           New-Item -ItemType Directory -Force -Path ${{ env.INSTALL_DIR }}
-          ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
+          Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}"' -wait
+          Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+          Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+          ${{ env.INSTALL_DIR }}/RegisterKSP.exe | Out-Null
+          ${{ env.INSTALL_DIR }}/eSignerCSP.Config.exe | Out-Null
 
       # 4) Set SSLcom account information
       - name: Config Account Information on eSignerCKA
@@ -53,13 +57,13 @@ jobs:
       # 6) Select code signing certificate and get thumprint for signing
       - name: Select Certificate From Windows Store
         run: |
-          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
           echo "THUMBPRINT=$($CodeSigningCert.Thumbprint)" >> $env:GITHUB_ENV
 
       # 7) Sign artifact with signtool
       - name: Sign Sample File with SignTool
         run: |
-          & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x86/signtool.exe' sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 ${{ env.THUMBPRINT }} ${{ env.SIGNABLE_FILE_PATH }}
+          & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 ${{ env.THUMBPRINT }} ${{ env.SIGNABLE_FILE_PATH }}
 
       # 8) Upload eSignerCKA Logs
       - name: Upload eSignerCKA Logs
@@ -97,7 +101,11 @@ jobs:
       - name: Setup eSignerCKA in Silent Mode
         run: |
           New-Item -ItemType Directory -Force -Path ${{ env.INSTALL_DIR }}
-          ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
+          Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}"' -wait
+          Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+          Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+          ${{ env.INSTALL_DIR }}/RegisterKSP.exe | Out-Null
+          ${{ env.INSTALL_DIR }}/eSignerCSP.Config.exe | Out-Null
 
       # 5) Set SSLcom account information
       - name: Config Account Information on eSignerCKA
@@ -113,7 +121,7 @@ jobs:
       # 7) Select code signing certificate and get thumprint for signing
       - name: Select Certificate From Windows Store
         run: |
-          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
           echo "THUMBPRINT=$($CodeSigningCert.Thumbprint)" >> $env:GITHUB_ENV
 
       # 8) Install OpenVsixSignTool to Custom Location (https://github.com/vcsjones/OpenOpcSignTool)
@@ -156,52 +164,50 @@ jobs:
           Remove-Item eSigner_CKA_Setup.zip
           Move-Item -Destination "eSigner_CKA_Installer.exe" -Path "eSigner_CKA_*\*.exe"
 
-      # 3) Download and Install WindowsSDK
-      - name: Download and Install WindowsSDK
-        run: |
-          Invoke-WebRequest -OutFile winsdksetup.exe "https://download.microsoft.com/download/3/b/d/3bd97f81-3f5b-4922-b86d-dc5145cd6bfe/windowssdk/winsdksetup.exe"
-          Start-Process ".\winsdksetup.exe" -argumentlist "features + /q" -wait
-
-      # 4) Download and Unzip Dynamics 365 Setup
+      # 3) Download and Unzip Dynamics 365 Setup
       - name: Download and Unzip Dynamics 365 Setup
         run: |
           Invoke-WebRequest -OutFile Dynamics.365.BC.12841.US.DVD.zip "https://download.microsoft.com/download/3/e/7/3e71083e-6cd6-4598-a6bb-5c602b74aec3/Release/Dynamics.365.BC.12841.US.DVD.zip"
           Expand-Archive -Force Dynamics.365.BC.12841.US.DVD.zip
 
-      # 5) Install Dynamics 365
+      # 4) Install Dynamics 365
       - name: Install Dynamics 365
         run: |
           Start-Process ".\Dynamics.365.BC.12841.US.DVD\setup.exe" -argumentlist "/config .\Dynamics.365.BC.12841.US.DVD\Install-NavComponentConfig.xml /quiet" -wait
 
-      # 6) Install eSignerCKA
+      # 5) Install eSignerCKA
       - name: Setup eSignerCKA in Silent Mode
         run: |
           New-Item -ItemType Directory -Force -Path ${{ env.INSTALL_DIR }}
-          ./eSigner_CKA_Installer.exe /CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}" | Out-Null
+          Start-Process ".\eSigner_CKA_Installer.exe" -argumentlist '/CURRENTUSER /VERYSILENT /SUPPRESSMSGBOXES /DIR="${{ env.INSTALL_DIR }}"' -wait
+          Start-Process ".\setup\vc_redist.x86.exe" -argumentlist "/install /q" -wait
+          Start-Process ".\setup\vc_redist.x64.exe" -argumentlist "/install /q" -wait
+          ${{ env.INSTALL_DIR }}/RegisterKSP.exe | Out-Null
+          ${{ env.INSTALL_DIR }}/eSignerCSP.Config.exe | Out-Null
 
-      # 7) Set SSLcom account information
+      # 6) Set SSLcom account information
       - name: Config Account Information on eSignerCKA
         run: |
           ${{ env.INSTALL_DIR }}/eSignerCKATool.exe config -mode "${{ secrets.MODE }}" -user "${{ secrets.USERNAME }}" -pass "${{ secrets.PASSWORD }}" -totp "${{ secrets.TOTP_SECRET }}" -key "${{ env.MASTER_KEY_FILE }}" -r
 
-      # 8) Unload and Load certificate to windows certificate store
+      # 7) Unload and Load certificate to windows certificate store
       - name: Load Certificate into Windows Store
         run: |
           ${{ env.INSTALL_DIR }}/eSignerCKATool.exe unload
           ${{ env.INSTALL_DIR }}/eSignerCKATool.exe load
 
-      # 9) Select code signing certificate and get thumprint for signing
+      # 8) Select code signing certificate and get thumprint for signing
       - name: Select Certificate From Windows Store
         run: |
-          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | Select-Object -First 1
+          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
           echo "THUMBPRINT=$($CodeSigningCert.Thumbprint)" >> $env:GITHUB_ENV
 
-      # 10) Sign artifact with signtool
+      # 9) Sign artifact with signtool
       - name: Sign Sample File with SignTool
         run: |
           & 'C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe' sign /debug /fd sha256 /tr http://ts.ssl.com /td sha256 /sha1 ${{ env.THUMBPRINT }} ${{ env.SIGNABLE_APP_FILE_PATH }}
 
-      # 11) Upload eSignerCKA Logs
+      # 10) Upload eSignerCKA Logs
       - name: Upload eSignerCKA Logs
         uses: actions/upload-artifact@v3
         if: ${{ always() }}
