@@ -2,7 +2,9 @@
 name: Sign Artifact
 
 # Trigger this workflow on a push
-on: push
+on:
+  push:
+  workflow_dispatch:
 
 # Create an environment variable
 env:
