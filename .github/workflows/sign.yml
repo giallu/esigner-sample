@@ -10,11 +10,11 @@ on:
       MODE:
         description: 'Signing mode'
         required: true
-        default: 'production'
+        default: 'product'
         type: choice
         options:
-        - production
-        - test
+        - product
+        - sandbox
 
 
 # Create an environment variable
