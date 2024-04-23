@@ -70,7 +70,8 @@ jobs:
       # 6) Select code signing certificate and get thumprint for signing
       - name: Select Certificate From Windows Store
         run: |
-          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Esigner" }
+          Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert
+          $CodeSigningCert = Get-ChildItem Cert:\CurrentUser\My -CodeSigningCert | WHERE { $_.subject -Match "Gianluca" }
           echo "THUMBPRINT=$($CodeSigningCert.Thumbprint)" >> $env:GITHUB_ENV
 
       # 7) Sign artifact with signtool
